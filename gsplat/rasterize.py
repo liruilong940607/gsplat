@@ -147,7 +147,7 @@ class _RasterizeGaussians(Function):
             else:
                 rasterize_fn = _C.nd_rasterize_forward
 
-            out_img, final_Ts, final_idx = rasterize_fn(
+            out_img, final_Ts, final_idx, max_vis = rasterize_fn(
                 tile_bounds,
                 block,
                 img_size,
@@ -178,12 +178,12 @@ class _RasterizeGaussians(Function):
 
         if return_alpha:
             out_alpha = 1 - final_Ts
-            return out_img, out_alpha
+            return out_img, out_alpha, max_vis
         else:
-            return out_img
+            return out_img, max_vis
 
     @staticmethod
-    def backward(ctx, v_out_img, v_out_alpha=None):
+    def backward(ctx, v_out_img, v_out_alpha=None, v_max_vis=None):
         img_height = ctx.img_height
         img_width = ctx.img_width
         num_intersects = ctx.num_intersects

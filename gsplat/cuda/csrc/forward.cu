@@ -8,6 +8,18 @@
 
 namespace cg = cooperative_groups;
 
+__device__ static float atomicMax(float* address, float val)
+{
+    int* address_as_i = (int*) address;
+    int old = *address_as_i, assumed;
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_i, assumed,
+            __float_as_int(::fmaxf(val, __int_as_float(assumed))));
+    } while (assumed != old);
+    return __int_as_float(old);
+}
+
 // kernel function for projecting each gaussian on device
 // each thread processes one gaussian
 __global__ void project_gaussians_forward_kernel(
@@ -306,6 +318,7 @@ __global__ void rasterize_forward(
     const float3* __restrict__ conics,
     const float3* __restrict__ colors,
     const float* __restrict__ opacities,
+    float* __restrict__ max_vis,
     float* __restrict__ final_Ts,
     int* __restrict__ final_index,
     float3* __restrict__ out_img,
@@ -404,6 +417,7 @@ __global__ void rasterize_forward(
             pix_out.x = pix_out.x + c.x * vis;
             pix_out.y = pix_out.y + c.y * vis;
             pix_out.z = pix_out.z + c.z * vis;
+            max_vis[g] = atomicMax(&max_vis[g], vis);
             T = next_T;
             cur_idx = batch_start + t;
         }
