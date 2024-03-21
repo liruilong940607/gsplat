@@ -61,6 +61,14 @@ __global__ void rasterize_backward_kernel(
     const float3* __restrict__ conics,
     const float3* __restrict__ rgbs,
     const float* __restrict__ opacities,
+    // ---- aabb culling ----
+    const float* __restrict__ aabb, // [6]
+    const float* __restrict__ c2w,
+    const float fx, const float fy, 
+    const float cx, const float cy,
+    const float3* __restrict__ means, 
+    const float* __restrict__ cov3d,
+    // ---- aabb culling ----
     const float3& __restrict__ background,
     const float* __restrict__ final_Ts,
     const int* __restrict__ final_index,

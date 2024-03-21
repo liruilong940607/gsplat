@@ -358,6 +358,15 @@ rasterize_forward_tensor(
     const torch::Tensor &conics,
     const torch::Tensor &colors,
     const torch::Tensor &opacities,
+    // ---- aabb culling ----
+    const torch::Tensor &aabb,
+    const torch::Tensor &c2w,
+    const float fx, const float fy,
+    const float cx, const float cy,
+    const torch::Tensor &means,
+    const torch::Tensor &cov3d,
+    bool cull_with_aabb,
+    // ---- aabb culling ----
     const torch::Tensor &background
 ) {
     DEVICE_GUARD(xys);
@@ -410,6 +419,13 @@ rasterize_forward_tensor(
         (float3 *)conics.contiguous().data_ptr<float>(),
         (float3 *)colors.contiguous().data_ptr<float>(),
         opacities.contiguous().data_ptr<float>(),
+        // ---- aabb culling ----
+        cull_with_aabb ? aabb.contiguous().data_ptr<float>() : nullptr,
+        c2w.contiguous().data_ptr<float>(),
+        fx, fy, cx, cy,
+        (float3 *)means.contiguous().data_ptr<float>(),
+        cov3d.contiguous().data_ptr<float>(),
+        // ---- aabb culling ----
         max_vis.contiguous().data_ptr<float>(),
         final_Ts.contiguous().data_ptr<float>(),
         final_idx.contiguous().data_ptr<int>(),
@@ -596,6 +612,15 @@ std::
         const torch::Tensor &conics,
         const torch::Tensor &colors,
         const torch::Tensor &opacities,
+        // ---- aabb culling ----
+        const torch::Tensor &aabb,
+        const torch::Tensor &c2w,
+        const float fx, const float fy,
+        const float cx, const float cy,
+        const torch::Tensor &means,
+        const torch::Tensor &cov3d,
+        bool cull_with_aabb,
+        // ---- aabb culling ----
         const torch::Tensor &background,
         const torch::Tensor &final_Ts,
         const torch::Tensor &final_idx,
@@ -639,6 +664,13 @@ std::
         (float3 *)conics.contiguous().data_ptr<float>(),
         (float3 *)colors.contiguous().data_ptr<float>(),
         opacities.contiguous().data_ptr<float>(),
+        // ---- aabb culling ----
+        cull_with_aabb ? aabb.contiguous().data_ptr<float>() : nullptr,
+        c2w.contiguous().data_ptr<float>(),
+        fx, fy, cx, cy,
+        (float3 *)means.contiguous().data_ptr<float>(),
+        cov3d.contiguous().data_ptr<float>(),
+        // ---- aabb culling ----
         *(float3 *)background.contiguous().data_ptr<float>(),
         final_Ts.contiguous().data_ptr<float>(),
         final_idx.contiguous().data_ptr<int>(),

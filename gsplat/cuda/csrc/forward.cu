@@ -318,6 +318,14 @@ __global__ void rasterize_forward(
     const float3* __restrict__ conics,
     const float3* __restrict__ colors,
     const float* __restrict__ opacities,
+    // ---- aabb culling ----
+    const float* __restrict__ aabb, // [6]
+    const float* __restrict__ c2w,
+    const float fx, const float fy, 
+    const float cx, const float cy,
+    const float3* __restrict__ means, 
+    const float* __restrict__ cov3d,
+    // ---- aabb culling ----
     float* __restrict__ max_vis,
     float* __restrict__ final_Ts,
     int* __restrict__ final_index,
@@ -338,6 +346,22 @@ __global__ void rasterize_forward(
     float px = (float)j;
     float py = (float)i;
     int32_t pix_id = i * img_size.x + j;
+    
+    // ---- aabb culling ----
+    float3 ray_dir, ray_o;
+    float tmin, tmax;
+    bool hit;
+    if(aabb != nullptr) {
+        float u = (px - cx + 0.5) / fx;
+        float v = (py - cy + 0.5) / fy;
+        float inv_len = 1.f / sqrtf(u * u + v * v + 1.f);
+        ray_dir = {u * inv_len, v * inv_len, inv_len}; // camera space
+        ray_dir = transform_4x3_rot(c2w, ray_dir); // world space
+        ray_o = {c2w[3], c2w[7], c2w[11]};
+        float3 inv_dir = {1.f / ray_dir.x, 1.f / ray_dir.y, 1.f / ray_dir.z};
+        hit = ray_aabb_intersect(ray_o, inv_dir, aabb, tmin, tmax);
+    }
+    // ---- aabb culling ----
 
     // return if out of bounds
     // keep not rasterizing threads around for reading data
@@ -398,7 +422,46 @@ __global__ void rasterize_forward(
             const float sigma = 0.5f * (conic.x * delta.x * delta.x +
                                         conic.z * delta.y * delta.y) +
                                 conic.y * delta.x * delta.y;
-            const float alpha = min(0.999f, opac * __expf(-sigma));
+            
+            // ---- aabb culling ----
+            float ratio = 1.f;
+            if(aabb != nullptr) {
+                if(hit) {
+                    int32_t g = id_batch[t];
+                    glm::mat3 V = glm::mat3(
+                        cov3d[6 * g + 0],
+                        cov3d[6 * g + 1],
+                        cov3d[6 * g + 2],
+                        cov3d[6 * g + 1],
+                        cov3d[6 * g + 3],
+                        cov3d[6 * g + 4],
+                        cov3d[6 * g + 2],
+                        cov3d[6 * g + 4],
+                        cov3d[6 * g + 5]
+                    );
+                    // inverse of the cov matrix
+                    glm::mat3 invV = glm::inverse(V);
+                    glm::vec3 r = glm::vec3(ray_dir.x, ray_dir.y, ray_dir.z);
+                    glm::vec3 mu = glm::vec3(
+                        means[g].x - ray_o.x, means[g].y - ray_o.y, means[g].z - ray_o.z
+                    );
+                    float aa = glm::dot(r, invV * r);
+                    float bb = glm::dot(r, invV * mu);
+                    float cc = glm::dot(mu, invV * mu);
+                    float beta1 = sqrtf(aa * 0.5);
+                    float beta2 = bb / aa;
+                    ratio = 0.5 * (erff(beta1 * (tmax - beta2)) - erff(beta1 * (tmin - beta2)));
+                    if (isnan(ratio)) {
+                        // TODO: cov3d has all zeros but reaches here !!??
+                        ratio = 1.0;
+                    }
+                } else {
+                    ratio = 0.0;
+                }
+            }
+            // ---- aabb culling ----
+
+            float alpha = min(0.999f, opac * __expf(-sigma) * ratio);
             if (sigma < 0.f || alpha < 1.f / 255.f) {
                 continue;
             }

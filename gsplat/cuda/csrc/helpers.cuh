@@ -4,6 +4,54 @@
 #include "third_party/glm/glm/gtc/type_ptr.hpp"
 #include <iostream>
 
+
+inline __device__ bool ray_aabb_intersect(
+    const float3 origin,
+    const float3 inv_dir, 
+    const float* aabb,
+    float& tmin, 
+    float& tmax
+) {    
+    float tmin_temp{};
+    float tmax_temp{};
+
+    if (inv_dir.x >= 0) {
+        tmin = (aabb[0] - origin.x) * inv_dir.x;
+        tmax = (aabb[3] - origin.x) * inv_dir.x;
+    } else {
+        tmin = (aabb[3] - origin.x) * inv_dir.x;
+        tmax = (aabb[0] - origin.x) * inv_dir.x;
+    }
+
+    if (inv_dir.y >= 0) {
+        tmin_temp = (aabb[1] - origin.y) * inv_dir.y;
+        tmax_temp = (aabb[4] - origin.y) * inv_dir.y;
+    } else {
+        tmin_temp = (aabb[4] - origin.y) * inv_dir.y;
+        tmax_temp = (aabb[1] - origin.y) * inv_dir.y;
+    }
+
+    if (tmin > tmax_temp || tmin_temp > tmax) return false;
+    if (tmin_temp > tmin) tmin = tmin_temp;
+    if (tmax_temp < tmax) tmax = tmax_temp;
+
+    if (inv_dir.z >= 0) {
+        tmin_temp = (aabb[2] - origin.z) * inv_dir.z;
+        tmax_temp = (aabb[5] - origin.z) * inv_dir.z;
+    } else {
+        tmin_temp = (aabb[5] - origin.z) * inv_dir.z;
+        tmax_temp = (aabb[2] - origin.z) * inv_dir.z;
+    }
+
+    if (tmin > tmax_temp || tmin_temp > tmax) return false;
+    if (tmin_temp > tmin) tmin = tmin_temp;
+    if (tmax_temp < tmax) tmax = tmax_temp;
+
+    if (tmax <= 0) return false;
+
+    return true;
+}
+
 inline __device__ float ndc2pix(const float x, const float W, const float cx) {
     return 0.5f * W * x + cx - 0.5f;
 }
@@ -95,6 +143,16 @@ inline __device__ void cov2d_to_compensation_vjp(
     v_cov2d.x += v_sqr_comp * (one_minus_sqr_comp * conic.x - 0.3 * inv_det);
     v_cov2d.y += 2 * v_sqr_comp * (one_minus_sqr_comp * conic.y);
     v_cov2d.z += v_sqr_comp * (one_minus_sqr_comp * conic.z - 0.3 * inv_det);
+}
+
+// helper for applying R * p, expect mat to be ROW MAJOR
+inline __device__ float3 transform_4x3_rot(const float *mat, const float3 p) {
+    float3 out = {
+        mat[0] * p.x + mat[1] * p.y + mat[2] * p.z,
+        mat[4] * p.x + mat[5] * p.y + mat[6] * p.z,
+        mat[8] * p.x + mat[9] * p.y + mat[10] * p.z,
+    };
+    return out;
 }
 
 // helper for applying R * p + T, expect mat to be ROW MAJOR

@@ -19,6 +19,14 @@ def rasterize_gaussians(
     num_tiles_hit: Int[Tensor, "*batch 1"],
     colors: Float[Tensor, "*batch channels"],
     opacity: Float[Tensor, "*batch 1"],
+    # ---- aabb culling ----
+    aabb,
+    c2w,
+    fx, fy, cx, cy,
+    means,
+    cov3d,
+    cull_with_aabb,
+    # ---- aabb culling ----
     img_height: int,
     img_width: int,
     block_width: int,
@@ -78,6 +86,14 @@ def rasterize_gaussians(
         num_tiles_hit.contiguous(),
         colors.contiguous(),
         opacity.contiguous(),
+        # ---- aabb culling ----
+        aabb.contiguous(),
+        c2w.contiguous(),
+        fx, fy, cx, cy,
+        means.contiguous(),
+        cov3d.contiguous(),
+        cull_with_aabb,
+        # ---- aabb culling ----
         img_height,
         img_width,
         block_width,
@@ -99,6 +115,14 @@ class _RasterizeGaussians(Function):
         num_tiles_hit: Int[Tensor, "*batch 1"],
         colors: Float[Tensor, "*batch channels"],
         opacity: Float[Tensor, "*batch 1"],
+        # ---- aabb culling ----
+        aabb,
+        c2w,
+        fx, fy, cx, cy,
+        means,
+        cov3d,
+        cull_with_aabb,
+        # ---- aabb culling ----
         img_height: int,
         img_width: int,
         block_width: int,
@@ -157,6 +181,14 @@ class _RasterizeGaussians(Function):
                 conics,
                 colors,
                 opacity,
+                # ---- aabb culling ----
+                aabb,
+                c2w,
+                fx, fy, cx, cy,
+                means,
+                cov3d,
+                cull_with_aabb,
+                # ---- aabb culling ----
                 background,
             )
 
@@ -174,7 +206,18 @@ class _RasterizeGaussians(Function):
             background,
             final_Ts,
             final_idx,
+            # ---- aabb culling ----
+            aabb,
+            c2w,
+            means,
+            cov3d,
         )
+        ctx.fx = fx
+        ctx.fy = fy
+        ctx.cx = cx
+        ctx.cy = cy
+        ctx.cull_with_aabb = cull_with_aabb
+        # ---- aabb culling ----
 
         if return_alpha:
             out_alpha = 1 - final_Ts
@@ -201,7 +244,18 @@ class _RasterizeGaussians(Function):
             background,
             final_Ts,
             final_idx,
+            # ---- aabb culling ----
+            aabb,
+            c2w,
+            means,
+            cov3d,
         ) = ctx.saved_tensors
+        fx = ctx.fx
+        fy = ctx.fy
+        cx = ctx.cx
+        cy = ctx.cy
+        cull_with_aabb = ctx.cull_with_aabb
+        # ---- aabb culling ----
 
         if num_intersects < 1:
             v_xy = torch.zeros_like(xys)
@@ -224,6 +278,14 @@ class _RasterizeGaussians(Function):
                 conics,
                 colors,
                 opacity,
+                # ---- aabb culling ----
+                aabb,
+                c2w,
+                fx, fy, cx, cy,
+                means,
+                cov3d,
+                cull_with_aabb,
+                # ---- aabb culling ----
                 background,
                 final_Ts,
                 final_idx,
@@ -239,6 +301,14 @@ class _RasterizeGaussians(Function):
             None,  # num_tiles_hit
             v_colors,  # colors
             v_opacity,  # opacity
+            # ---- aabb culling ----
+            None,
+            None,
+            None, None, None, None,
+            None,
+            None,
+            None,
+            # ---- aabb culling ----
             None,  # img_height
             None,  # img_width
             None,  # block_width

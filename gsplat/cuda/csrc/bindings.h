@@ -126,6 +126,15 @@ std::tuple<
     const torch::Tensor &conics,
     const torch::Tensor &colors,
     const torch::Tensor &opacities,
+    // ---- aabb culling ----
+    const torch::Tensor &aabb,
+    const torch::Tensor &c2w,
+    const float fx, const float fy,
+    const float cx, const float cy,
+    const torch::Tensor &means,
+    const torch::Tensor &cov3d,
+    bool cull_with_aabb,
+    // ---- aabb culling ----
     const torch::Tensor &background
 );
 
@@ -188,6 +197,15 @@ std::
         const torch::Tensor &conics,
         const torch::Tensor &colors,
         const torch::Tensor &opacities,
+        // ---- aabb culling ----
+        const torch::Tensor &aabb,
+        const torch::Tensor &c2w,
+        const float fx, const float fy,
+        const float cx, const float cy,
+        const torch::Tensor &means,
+        const torch::Tensor &cov3d,
+        bool cull_with_aabb,
+        // ---- aabb culling ----
         const torch::Tensor &background,
         const torch::Tensor &final_Ts,
         const torch::Tensor &final_idx,

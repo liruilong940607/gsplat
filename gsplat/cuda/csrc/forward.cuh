@@ -35,6 +35,14 @@ __global__ void rasterize_forward(
     const float3* __restrict__ conics,
     const float3* __restrict__ colors,
     const float* __restrict__ opacities,
+    // ---- aabb culling ----
+    const float* __restrict__ aabb, // [6]
+    const float* __restrict__ c2w,
+    const float fx, const float fy, 
+    const float cx, const float cy,
+    const float3* __restrict__ means, 
+    const float* __restrict__ cov3d,
+    // ---- aabb culling ----
     float* __restrict__ max_vis,
     float* __restrict__ final_Ts,
     int* __restrict__ final_index,
